@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convertisseur YouTube → MP3</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: sans-serif;
+            background: #111;
+            color: #eee;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .card {
+            background: #1e1e1e;
+            border-radius: 12px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+        }
+        h1 { font-size: 1.4rem; text-align: center; color: #fff; }
+        label { font-size: 0.85rem; color: #aaa; margin-bottom: 0.3rem; display: block; }
+        .row { display: flex; gap: 0.5rem; }
+        input[type="text"] {
+            flex: 1;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 0.6rem 0.9rem;
+            color: #eee;
+            font-size: 0.95rem;
+        }
+        input[readonly] { color: #888; cursor: default; }
+        button {
+            background: #e52d27;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 0.6rem 1.1rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+        button:hover { background: #c0392b; }
+        button:disabled { background: #555; cursor: not-allowed; }
+        #status {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 0.8rem 1rem;
+            font-size: 0.9rem;
+            color: #aaa;
+            min-height: 3rem;
+            line-height: 1.6;
+        }
+        #status.success { color: #2ecc71; }
+        #status.error { color: #e74c3c; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>YouTube → MP3</h1>
+
+        <div>
+            <label>Dossier de destination</label>
+            <div class="row">
+                <input type="text" id="folder-path" readonly placeholder="Aucun dossier sélectionné">
+                <button id="btn-folder">Choisir</button>
+            </div>
+        </div>
+
+        <div>
+            <label>URL YouTube</label>
+            <input type="text" id="yt-url" placeholder="https://www.youtube.com/watch?v=...">
+        </div>
+
+        <button id="btn-convert">Convertir</button>
+
+        <div id="status">En attente...</div>
+    </div>
+
+    <script>
+        const folderPathInput = document.getElementById("folder-path");
+        const btnFolder = document.getElementById("btn-folder");
+        const btnConvert = document.getElementById("btn-convert");
+        const ytUrl = document.getElementById("yt-url");
+        const statusDiv = document.getElementById("status");
+
+        btnFolder.addEventListener("click", async () => {
+            btnFolder.disabled = true;
+            const res = await fetch("/choose-folder", { method: "POST" });
+            const data = await res.json();
+            if (data.path) {
+                folderPathInput.value = data.path;
+            }
+            btnFolder.disabled = false;
+        });
+
+        btnConvert.addEventListener("click", () => {
+            const url = ytUrl.value.trim();
+            const folder = folderPathInput.value.trim();
+
+            if (!url) {
+                setStatus("Veuillez entrer une URL YouTube.", "error");
+                return;
+            }
+            if (!folder) {
+                setStatus("Veuillez choisir un dossier de destination.", "error");
+                return;
+            }
+
+            btnConvert.disabled = true;
+            setStatus("Initialisation...", "");
+
+            const params = new URLSearchParams({ url, folder });
+            const evtSource = new EventSource(`/convert?${params}`);
+
+            evtSource.onmessage = (e) => {
+                const data = e.data;
+                if (data.startsWith("STATUS:")) {
+                    setStatus(data.slice(7), "");
+                } else if (data.startsWith("DONE:")) {
+                    setStatus("✓ " + data.slice(5), "success");
+                    evtSource.close();
+                    btnConvert.disabled = false;
+                } else if (data.startsWith("ERROR:")) {
+                    setStatus("✗ " + data.slice(6), "error");
+                    evtSource.close();
+                    btnConvert.disabled = false;
+                }
+            };
+
+            evtSource.onerror = () => {
+                setStatus("✗ Erreur de connexion avec le serveur.", "error");
+                evtSource.close();
+                btnConvert.disabled = false;
+            };
+        });
+
+        function setStatus(msg, type) {
+            statusDiv.textContent = msg;
+            statusDiv.className = type;
+        }
+    </script>
+</body>
+</html>
