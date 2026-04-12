@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 import threading
@@ -9,12 +10,28 @@ from flask import Flask, Response, jsonify, render_template, request, stream_wit
 app = Flask(__name__)
 
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "output")
+CONFIG_FILE = os.path.join(os.path.dirname(__file__), "config.json")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+
+def load_saved_folder():
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE) as f:
+                return json.load(f).get("folder", "")
+        except (json.JSONDecodeError, OSError):
+            return ""
+    return ""
+
+
+def save_folder(path):
+    with open(CONFIG_FILE, "w") as f:
+        json.dump({"folder": path}, f)
 
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", saved_folder=load_saved_folder())
 
 
 @app.route("/choose-folder", methods=["POST"])
@@ -32,6 +49,9 @@ def choose_folder():
     t = threading.Thread(target=open_dialog)
     t.start()
     t.join()
+
+    if result["path"]:
+        save_folder(result["path"])
 
     return jsonify({"path": result["path"]})
 
