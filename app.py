@@ -53,11 +53,12 @@ def is_startup_enabled():
 
 
 def enable_startup():
+    pythonw = os.path.join(os.path.dirname(sys.executable), "pythonw.exe")
     key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
                          r"Software\Microsoft\Windows\CurrentVersion\Run",
                          0, winreg.KEY_SET_VALUE)
     winreg.SetValueEx(key, APP_NAME, 0, winreg.REG_SZ,
-                      f'pythonw "{APP_PATH}"')
+                      f'"{pythonw}" "{APP_PATH}"')
     winreg.CloseKey(key)
 
 
