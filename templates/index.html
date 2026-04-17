@@ -61,6 +61,15 @@
         }
         #status.success { color: #2ecc71; }
         #status.error { color: #e74c3c; }
+
+        @keyframes folder-success {
+            0%   { border-color: #2ecc71; box-shadow: 0 0 0 0 rgba(46,204,113,0.6); }
+            50%  { border-color: #2ecc71; box-shadow: 0 0 8px 4px rgba(46,204,113,0.3); }
+            100% { border-color: #444;    box-shadow: none; }
+        }
+        #folder-path.done {
+            animation: folder-success 1.2s ease-out forwards;
+        }
     </style>
 </head>
 <body>
@@ -140,6 +149,7 @@
                             setStatus(data.slice(7), "");
                         } else if (data.startsWith("DONE:")) {
                             setStatus("✓ " + data.slice(5), "success");
+                            flashFolder();
                         } else if (data.startsWith("ERROR:")) {
                             setStatus("✗ " + data.slice(6), "error");
                         }
@@ -151,6 +161,12 @@
                 btnConvert.disabled = false;
             }
         });
+
+        function flashFolder() {
+            folderPathInput.classList.remove("done");
+            void folderPathInput.offsetWidth; // reset animation
+            folderPathInput.classList.add("done");
+        }
 
         function setStatus(msg, type) {
             statusDiv.textContent = msg;
