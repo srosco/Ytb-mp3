@@ -102,7 +102,7 @@
             btnFolder.disabled = false;
         });
 
-        btnConvert.addEventListener("click", () => {
+        btnConvert.addEventListener("click", async () => {
             const url = ytUrl.value.trim();
             const folder = folderPathInput.value.trim();
 
@@ -118,29 +118,38 @@
             btnConvert.disabled = true;
             setStatus("Initialisation...", "");
 
-            const params = new URLSearchParams({ url, folder });
-            const evtSource = new EventSource(`/convert?${params}`);
+            try {
+                const params = new URLSearchParams({ url, folder });
+                const response = await fetch(`/convert?${params}`);
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = "";
 
-            evtSource.onmessage = (e) => {
-                const data = e.data;
-                if (data.startsWith("STATUS:")) {
-                    setStatus(data.slice(7), "");
-                } else if (data.startsWith("DONE:")) {
-                    setStatus("✓ " + data.slice(5), "success");
-                    evtSource.close();
-                    btnConvert.disabled = false;
-                } else if (data.startsWith("ERROR:")) {
-                    setStatus("✗ " + data.slice(6), "error");
-                    evtSource.close();
-                    btnConvert.disabled = false;
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split("\n");
+                    buffer = lines.pop();
+
+                    for (const line of lines) {
+                        if (!line.startsWith("data:")) continue;
+                        const data = line.slice(5).trim();
+                        if (data.startsWith("STATUS:")) {
+                            setStatus(data.slice(7), "");
+                        } else if (data.startsWith("DONE:")) {
+                            setStatus("✓ " + data.slice(5), "success");
+                        } else if (data.startsWith("ERROR:")) {
+                            setStatus("✗ " + data.slice(6), "error");
+                        }
+                    }
                 }
-            };
-
-            evtSource.onerror = () => {
+            } catch (e) {
                 setStatus("✗ Erreur de connexion avec le serveur.", "error");
-                evtSource.close();
+            } finally {
                 btnConvert.disabled = false;
-            };
+            }
         });
 
         function setStatus(msg, type) {

@@ -147,6 +147,9 @@ def convert():
     folder = request.args.get("folder", "").strip()
 
     def generate():
+        # Désactive la reconnexion automatique du navigateur
+        yield "retry: 0\n\n"
+
         if not url:
             yield "data: ERROR:URL manquante.\n\n"
             return
