@@ -157,14 +157,18 @@ def convert():
             yield "data: ERROR:Le dossier sélectionné n'existe pas.\n\n"
             return
 
+        NO_WINDOW = subprocess.CREATE_NO_WINDOW
+
         try:
-            subprocess.run(["yt-dlp", "--version"], capture_output=True, check=True)
+            subprocess.run(["yt-dlp", "--version"], capture_output=True, check=True,
+                           creationflags=NO_WINDOW)
         except FileNotFoundError:
             yield "data: ERROR:yt-dlp n'est pas installé. Lancez : pip install yt-dlp\n\n"
             return
 
         try:
-            subprocess.run(["ffmpeg", "-version"], capture_output=True, check=True)
+            subprocess.run(["ffmpeg", "-version"], capture_output=True, check=True,
+                           creationflags=NO_WINDOW)
         except FileNotFoundError:
             yield "data: ERROR:ffmpeg n'est pas installé. Téléchargez-le sur https://ffmpeg.org et ajoutez-le au PATH.\n\n"
             return
@@ -189,6 +193,7 @@ def convert():
             text=True,
             encoding="utf-8",
             errors="replace",
+            creationflags=NO_WINDOW,
         )
 
         filename = None
